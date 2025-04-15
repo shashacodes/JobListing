@@ -1,9 +1,11 @@
-// src/components/JobBoard.tsx
 "use client"
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from "@/app/lib/utils";
 import { Badge } from "@/app/components/ui/badge";
 import { Card } from "@/app/components/ui/card";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
+import { X } from "lucide-react";
 import jobData from "@/app/components/data/data.json";
 
 interface JobDataItem {
@@ -26,7 +28,7 @@ function transformJobData(data: JobDataItem[]): JobListing[] {
   return data.map(item => ({
     id: item.id.toString(),
     companyName: item.company,
-    companyLogo: item.logo, // Keep the original logo path from JSON
+    companyLogo: item.logo,
     position: item.position,
     postedAt: item.postedAt,
     jobType: item.contract as JobType,
@@ -96,15 +98,118 @@ interface JobListing {
 }
 
 export function JobBoard() {
-  const jobListings = transformJobData(jobData);
+  const allJobListings = transformJobData(jobData);
+  const [filteredJobs, setFilteredJobs] = useState<JobListing[]>(allJobListings);
+  const [filters, setFilters] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  useEffect(() => {
+    if (filters.length === 0 && !searchTerm) {
+      setFilteredJobs(allJobListings);
+      return;
+    }
+
+    const filtered = allJobListings.filter(job => {
+      const matchesFilters = filters.length === 0 || 
+        filters.every(filter => 
+          job.skills.some(skill => 
+            skill.name.toLowerCase() === filter.toLowerCase()
+          )
+        );
+      
+      const matchesSearch = !searchTerm || 
+        job.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.companyName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      return matchesFilters && matchesSearch;
+    });
+
+    setFilteredJobs(filtered);
+  }, [filters, searchTerm]);
+
+  const addFilter = (skillName: string) => {
+    if (!filters.includes(skillName)) {
+      setFilters([...filters, skillName]);
+    }
+  };
+
+  const removeFilter = (filter: string) => {
+    setFilters(filters.filter(f => f !== filter));
+  };
+
+  const clearFilters = () => {
+    setFilters([]);
+    setSearchTerm('');
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-200 to-teal-50 pt-16 pb-16">
+    <div className="min-h-screen bg-gradient-to-b from-teal-100 to-teal-50 pt-16 pb-16">
       <div className="container mx-auto px-4">
+        <div className="mb-8  rounded-lg shadow p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Search by position or company..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <Button 
+              className='text-black bg-white font-bold'
+                onClick={clearFilters} 
+                variant="outline" 
+                disabled={filters.length === 0 && !searchTerm}
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+          
+          {filters.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {filters.map((filter, index) => (
+                <Badge 
+                  key={index} 
+                  className="px-3 py-1 bg-teal-100 text-teal-700 rounded-md flex items-center"
+                >
+                  {filter}
+                  <Button
+                    variant="ghost"
+                    className="h-4 w-4 p-0 ml-2"
+                    onClick={() => removeFilter(filter)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="mb-4 text-gray-600">
+          Showing {filteredJobs.length} of {allJobListings.length} jobs
+        </div>
+        
         <div className="space-y-6">
-          {jobListings.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
+          {filteredJobs.length > 0 ? (
+            filteredJobs.map((job) => (
+              <JobCard 
+                key={job.id} 
+                job={job} 
+                onFilterClick={addFilter} 
+              />
+            ))
+          ) : (
+            <div className="bg-white p-8 text-center rounded-lg shadow">
+              <h3 className="text-xl font-medium text-gray-700">No matching jobs found</h3>
+              <p className="mt-2 text-gray-500">Try adjusting your filters or search terms</p>
+              <Button onClick={clearFilters} className="mt-4">
+                Clear All Filters
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -113,16 +218,16 @@ export function JobBoard() {
 
 interface JobCardProps {
   job: JobListing;
+  onFilterClick: (skill: string) => void;
 }
 
-const JobCard: React.FC<JobCardProps> = ({ job }) => {
-  // Use the logo path directly from the job data
+const JobCard: React.FC<JobCardProps> = ({ job, onFilterClick }) => {
   const logoPath = job.companyLogo;
 
   return (
     <Card className="bg-white shadow-md rounded-lg overflow-hidden border-l-4 border-teal-500 hover:shadow-lg transition-shadow">
-      <div className="flex items-center p-6">
-        <div className="relative mr-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center p-6">
+        <div className="relative mr-6 mb-4 md:mb-0">
           <div className="w-12 h-12 flex items-center justify-center">
             <img 
               src={logoPath} 
@@ -131,7 +236,6 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
               onError={(e) => {
                 console.error(`Failed to load image: ${logoPath}`);
                 const target = e.target as HTMLImageElement;
-                // Show company initial as fallback
                 target.style.display = 'none';
                 const parent = target.parentElement as HTMLElement;
                 if (parent) {
@@ -173,7 +277,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 ml-auto">
+        <div className="flex flex-wrap gap-2 mt-4 md:mt-0 md:ml-auto">
           {job.skills.map((skill, index) => (
             <Badge 
               key={index} 
@@ -181,6 +285,7 @@ const JobCard: React.FC<JobCardProps> = ({ job }) => {
                 "px-3 py-1 rounded-md font-medium text-xs cursor-pointer hover:bg-teal-500 hover:text-white transition-colors",
                 getSkillColor(skill.category)
               )}
+              onClick={() => onFilterClick(skill.name)}
             >
               {skill.name}
             </Badge>
