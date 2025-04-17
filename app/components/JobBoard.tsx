@@ -157,7 +157,7 @@ export function JobBoard() {
             </div>
             <div>
               <Button 
-              className='text-black bg-white font-bold'
+              className='text-black  font-bold'
                 onClick={clearFilters} 
                 variant="outline" 
                 disabled={filters.length === 0 && !searchTerm}
@@ -225,7 +225,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onFilterClick }) => {
   const logoPath = job.companyLogo;
 
   return (
-    <Card className="bg-black shadow-md rounded-lg overflow-hidden border-l-4 border-teal-500 hover:shadow-lg transition-shadow">
+    <Card className=" shadow-md rounded-lg overflow-hidden border-l-4 border-teal-500 hover:shadow-lg transition-shadow">
       <div className="flex flex-col md:flex-row items-start md:items-center p-6">
         <div className="relative mr-6 mb-4 md:mb-0">
           <div className="w-12 h-12 flex items-center justify-center">
